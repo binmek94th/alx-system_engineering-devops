@@ -1,9 +1,2 @@
 #!/bin/bash
-count=0
-IFS=':' read -ra dirs <<< "$PATH"
-for dir in "${dirs[@]}"; do
-  if [[ -n $dir ]]; then
-    ((count++))
-  fi
-done
-echo $count
+echo "$PATH" | tr ':' '\n' | grep -c '.'

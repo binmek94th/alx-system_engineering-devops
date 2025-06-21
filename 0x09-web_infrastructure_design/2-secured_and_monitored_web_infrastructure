@@ -1,0 +1,126 @@
+Newly Added:
+✅ 3 Firewalls
+✅ 1 SSL Certificate for www.foobar.com
+✅ 3 Monitoring Clients (e.g., Sumo Logic, Prometheus exporters, etc.)
+
+1. Firewalls (3 total)
+🔐 What they’re for:
+A firewall filters network traffic based on rules (e.g., allow or deny IPs/ports).
+
+Helps prevent unauthorized access, limit exposure, and contain breaches.
+
+Layer	Firewall Purpose
+Web Tier (LB)	Allow only HTTP/HTTPS from the internet
+App Tier	Allow traffic only from LB IP range
+DB Tier	Accept connections only from application servers on port 3306
+
+🔹 2. SSL Certificate
+🔒 Why HTTPS?
+Encrypts communication between the client and the server
+
+Prevents MITM (Man-In-The-Middle) attacks
+
+Builds user trust (browser shows secure lock icon)
+
+Mandatory for secure cookies, OAuth, and many APIs
+
+Use Let's Encrypt or a commercial provider to install SSL at the load balancer.
+
+🔹 3. Monitoring Clients
+📊 Why Monitoring?
+Detect issues before they affect users
+
+Track system health, usage trends, QPS, memory, CPU
+
+Useful for alerting and capacity planning
+
+📡 How Monitoring Works:
+Each app/web server runs a monitoring agent (like:
+
+SumoLogic collector
+
+Prometheus node exporter
+
+Datadog agent, etc.)
+
+Agents collect and forward:
+
+Logs (access logs, error logs)
+
+Metrics (CPU, memory, QPS)
+
+Application traces or errors
+
+📈 Monitoring QPS (Queries per Second)
+To monitor web server QPS:
+
+Method 1: Nginx access logs
+Use a log collector like SumoLogic or FluentBit to tail /var/log/nginx/access.log
+
+Count HTTP requests per second using timestamps
+
+Method 2: Nginx metrics exporter
+Enable stub_status module or use Prometheus nginx-exporter
+
+Monitor:
+
+requests counter
+
+Divide request count by scrape interval for QPS
+
+# nginx status stub
+Active connections: 1
+server accepts handled requests
+  10    10    15
+⚠️ Issues in This Infrastructure
+❌ 1. SSL Termination at Load Balancer
+Problem: SSL is decrypted at the load balancer; traffic between the LB and app servers is plaintext.
+
+Implication: If an attacker gets access to the internal network (via VPN, misconfig), they can read all traffic.
+
+Solution:
+
+Use SSL pass-through, or
+
+Re-encrypt between LB → App servers using internal SSL
+
+❌ 2. Only One MySQL Write Node
+Problem: The Primary (write) node is a single point of failure.
+
+If it crashes, no writes can happen
+
+Manual promotion of replica is needed unless failover is automated (e.g., with Orchestrator, MHA, or ProxySQL)
+
+Solution:
+
+Add automatic failover
+
+Consider multi-primary clustering with caution (more complex to manage)
+
+❌ 3. All-in-One Servers
+Problem: If servers contain web server, app, and DB, you:
+
+Risk one component affecting the others (e.g., DB load slows down Nginx)
+
+Make scaling difficult (can’t scale layers independently)
+
+Expose attack surfaces (if web server is compromised, DB might be too)
+
+Solution:
+
+Follow separation of concerns
+
+Place database on dedicated servers (or managed DB)
+
+Use containerization (e.g., Docker) or microservices
+
+✅ Final Summary Table
+Component	Purpose
+Firewalls (3)	Restrict access to each tier (Web, App, DB)
+SSL Certificate	Encrypt HTTP traffic; HTTPS for security
+Monitoring Clients	Track health, metrics, logs
+HTTPS	Prevents eavesdropping and tampering
+Monitoring QPS	Use log parsers or metrics exporters
+SSL Termination Risk	Internal traffic unencrypted unless re-encrypted
+Single MySQL Writer	SPOF, must plan for failover
+All-in-One Servers	Limits scalability and increases attack surface

@@ -1,0 +1,90 @@
+Final Infrastructure Overview
+🔧 Components Breakdown (6 servers total)
+Server Role	Count	Description
+Load Balancers (HAProxy)	2	Handle incoming traffic and distribute to web servers
+Web Servers (Nginx)	1	Serve static content, forward dynamic requests
+Application Servers	1	Execute application logic (backend code)
+Database Servers (Primary/Replica)	2	One handles writes (primary), one handles reads (replica)
+
+🔁 Load Balancer Cluster (HAProxy x2)
+The second HAProxy server is added to ensure high availability
+
+HAProxy cluster uses Keepalived (or VRRP) to manage a virtual IP (VIP)
+
+Why this is added:
+
+If one load balancer fails, the other takes over instantly
+
+Prevents single point of failure at the front of your infrastructure
+
+Client → www.foobar.com (DNS → Virtual IP: 8.8.8.8)
+                   │
+         ┌─────────▼──────────┐
+         │  HAProxy LB1       │
+         └────────┬───────────┘
+                  │
+     ┌────────────▼────────────┐
+     │  HAProxy LB2 (Hot-Standby)│
+     └─────────────────────────┘
+🔹 HAProxy Clustering uses Active-Passive (via Keepalived) or can be configured Active-Active with proper state sharing.
+
+🧱 Split Component Architecture
+🧩 1. Web Server (Nginx Only)
+Handles static content
+
+Forwards dynamic requests to application server
+
+Lightweight and fast
+
+Why split it out?
+
+Reduces load on app server
+
+Easier to horizontally scale static-serving layer
+
+Cleaner separation of static vs dynamic responsibilities
+
+🧩 2. Application Server (Backend Only)
+Handles all dynamic requests (e.g., via Gunicorn, Node.js, PHP-FPM)
+
+Processes business logic, API endpoints, sessions
+
+Why split it out?
+
+Allows dedicated tuning of the app environment (e.g., Python threads, PHP workers)
+
+Reduces competition for resources with other services
+
+🧩 3. Database Servers (Primary/Replica)
+Primary: Accepts all write operations
+
+Replica: Accepts only read operations
+
+Why split it out?
+
+Databases are resource-intensive and sensitive
+
+Allows tuning DB performance without affecting app performance
+
+Supports read scaling (with replicas)
+
+Enables backup/failover strategies
+
+ Benefits of This Architecture
+Fault Tolerance: LB clustering and DB replication reduce downtime
+
+Security: Each tier can be firewall-restricted (e.g., app can't be reached directly)
+
+Scalability: Easily scale each component horizontally
+
+Observability: With monitoring clients, each tier's performance is tracked
+
+Flexibility: Easier to maintain and deploy components independently
+
+🚨 Remaining Considerations
+Concern	Explanation
+LB Cluster Complexity	Requires extra setup (Keepalived, health checks, failover tests)
+Latency between servers	Must ensure fast private networking between web, app, and DB
+Deployment orchestration	Need a CI/CD pipeline to sync code across components
+Database failover	Needs automation or human intervention if primary fails
+

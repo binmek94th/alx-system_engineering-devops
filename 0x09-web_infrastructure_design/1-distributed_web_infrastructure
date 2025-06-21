@@ -1,0 +1,113 @@
+Components:
+2 servers running the application (App Server 1 & App Server 2)
+
+1 load balancer (HAProxy)
+
+1 web server (Nginx) on each application server
+
+1 shared application codebase (replicated or via CI/CD)
+
+1 MySQL Primary-Replica cluster (Primary + Replica)
+
+Domain: www.foobar.com → Load Balancer IP
+
+🌐 Step-by-Step Flow
+A user opens a browser and types www.foobar.com
+
+1. DNS Resolution
+DNS resolves www.foobar.com to the Load Balancer's public IP (e.g., 8.8.8.8)
+
+This is done using an A record 
+
+2. HAProxy (Load Balancer)
+Receives the request from the user
+
+Distributes it to one of the two backend App Servers based on a load-balancing algorithm
+
+HAProxy can also perform health checks and remove dead backends
+
+3. App Servers
+Each server has:
+
+Nginx (web server)
+
+Application server (e.g., PHP-FPM, Gunicorn)
+
+Application code
+
+They process the request and return the result back to the load balancer → client
+
+4. Database Cluster
+Application servers connect to the Primary (write) or Replica (read-only) MySQL node
+
+The replica syncs from the primary using asynchronous replication
+
+🧱 Component Justifications
+Component	Why It’s Added
+2 App Servers	Improve redundancy and scalability—handle more traffic; if one fails, the other continues
+HAProxy (Load Balancer)	Distributes incoming traffic, balances load, detects failures
+MySQL Primary-Replica	Provides data redundancy; Replica handles read queries, Primary handles writes
+
+⚙️ Load Balancing: Algorithm & Setup
+🧮 Algorithm: Round-Robin
+Each request is sent to the next server in sequence
+
+Evenly distributes traffic
+
+Simple and efficient if all servers are equal in power
+
+haproxy
+Copy
+Edit
+backend app_servers
+    balance roundrobin
+    server app1 10.0.0.2:80 check
+    server app2 10.0.0.3:80 check
+🔁 Active-Active vs Active-Passive
+🔹 Active-Active (This setup)
+Both servers are live and serve traffic simultaneously
+
+Load balancer distributes requests to all healthy nodes
+
+🔸 Active-Passive
+Only one server is active at a time
+
+Passive server takes over if active fails (often in failover setups)
+
+🧠 Active-Active = higher throughput, better performance
+Active-Passive = simpler failover but underutilizes resources
+
+🛢️ MySQL Primary-Replica Explained
+Role	Description
+Primary (Master)	Accepts both read and write queries
+Replica (Slave)	Accepts only read queries; syncs data from Primary via replication logs
+
+🔄 How Replication Works:
+Primary logs all changes in binary logs
+
+Replica reads these logs and applies changes asynchronously
+
+Delays (lag) may occur depending on traffic
+
+Application Usage:
+Writes (e.g., insert/update) → Primary only
+
+Reads (e.g., search, list) → Primary or Replica, depending on routing logic
+
+🧯 Problems With This Infrastructure
+🔴 Single Points of Failure (SPOF)
+Load Balancer: If HAProxy crashes, no traffic is routed (no redundancy for it)
+
+Database Primary: If it fails, no writes can happen (unless failover is configured)
+
+🔒 Security Issues
+No firewall: Ports are all exposed to the public
+
+No HTTPS: All communication is in plaintext → vulnerable to eavesdropping or MITM attacks
+
+📉 No Monitoring
+No tools like Prometheus, Grafana, or logs aggregation
+
+Cannot detect spikes, errors, or failures proactively
+
+No alerts when a service is down or unhealthy

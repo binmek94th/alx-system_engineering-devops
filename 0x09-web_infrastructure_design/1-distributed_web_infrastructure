@@ -56,9 +56,6 @@ Evenly distributes traffic
 
 Simple and efficient if all servers are equal in power
 
-haproxy
-Copy
-Edit
 backend app_servers
     balance roundrobin
     server app1 10.0.0.2:80 check

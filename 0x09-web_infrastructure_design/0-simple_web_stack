@@ -1,1 +1,75 @@
-hello
+. Domain Name Resolution (DNS)
+The browser checks the Domain Name System (DNS) to resolve www.foobar.com to an IP address.
+
+The "www" part is a subdomain (or hostname).
+
+The DNS record type used here is an A record, which maps www.foobar.com → 8.8.8.8.
+
+2. Connecting to the Server
+The browser now knows the IP address 8.8.8.8 and sends an HTTP request to it:
+
+GET / HTTP/1.1
+Host: www.foobar.com
+This request travels over the internet using TCP/IP protocols.
+
+🖥️ Inside the Server (IP: 8.8.8.8)
+What is a server?
+A server is a physical or virtual machine that provides services to other computers (clients) over a network. In this setup, it hosts your website, processes user requests, and stores data.
+
+Now let's break down the components inside this server:
+
+🔹 Nginx (Web Server)
+Listens on port 80 (HTTP) and 443 (HTTPS).
+
+Accepts incoming HTTP requests from users.
+
+Serves static content (images, HTML, JS, CSS).
+
+Forwards dynamic requests to the application server (via reverse proxy).
+
+Role: First point of contact with the user. Acts as a traffic manager and content deliverer.
+
+🔹 Application Server
+Handles dynamic content, such as generating HTML based on logic.
+
+Example: Could be PHP-FPM, Gunicorn (for Python), or a Node.js runtime.
+
+It reads the application files (your code base), processes user input, and generates dynamic responses.
+
+Role: Executes backend code to generate responses to user requests.
+
+🔹 Application Files (Code Base)
+Contains your app logic, HTML templates, routing, business rules, etc.
+
+Lives in a directory like /var/www/foobar.com.
+
+Role: The core of your website—your logic and functionality.
+
+🔹 MySQL (Database)
+Stores structured data like users, products, posts, etc.
+
+Application server connects to it via a local socket or over localhost:3306.
+
+Role: Persistently store and retrieve data for the application.
+
+🔗 Communication Protocol
+The server communicates with the user's browser using the HTTP/HTTPS protocol, which runs over TCP/IP.
+
+
+❗ Problems with This Architecture
+🔸 1. SPOF (Single Point of Failure)
+If the one server crashes (hardware failure, OS crash), the entire website goes down.
+
+No redundancy or failover.
+
+🔸 2. Downtime During Maintenance
+Restarting the web or app server (e.g., after a code deployment) will temporarily take the website offline.
+
+Users get errors during the restart process.
+
+🔸 3. No Scalability
+One server can only handle a limited number of requests per second.
+
+High traffic can slow down or crash the server.
+
+There is no load balancer or horizontal scaling.

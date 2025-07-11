@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+# Ignore SC2086 as required
+# shellcheck disable=SC2086
+
+# Function to fetch and display subdomain info
+get_subdomain_info() {
+  local domain=$1
+  local sub=$2
+
+  dig ${sub}.${domain} +short | awk -v sub=$sub '
+    /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ {
+      print "The subdomain " sub " is a A record and points to " $1
+    }
+  '
+}
+
+# Main logic
+domain=$1
+subdomain=$2
+
+# Check if only domain is provided
+if [[ -n "$domain" && -z "$subdomain" ]]; then
+  for sub in www lb-01 web-01 web-02; do
+    get_subdomain_info $domain $sub
+  done
+elif [[ -n "$domain" && -n "$subdomain" ]]; then
+  get_subdomain_info $domain $subdomain
+fi
+

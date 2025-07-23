@@ -1,4 +1,4 @@
- #!/usr/bin/env bash
+#!/usr/bin/env bash
 # Configure nginx to add custom HTTP response header X-Served-By with hostname value
 # Ignore SC2154 shellcheck warning about undefined variables
 

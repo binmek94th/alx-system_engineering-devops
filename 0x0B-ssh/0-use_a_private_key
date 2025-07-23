@@ -1,1 +1,5 @@
 #!/usr/bin/env bash
+
+SERVER="54.174.191.245"
+
+ssh -i ~/.ssh/school ubuntu@"$SERVER"

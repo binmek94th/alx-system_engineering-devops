@@ -1,67 +1,37 @@
 #!/bin/bash
-# Script to configure port forwarding from 8080 to 80 on web-01
 
-set -e
-
-# Check for root
-if [ "$EUID" -ne 0 ]; then
+# Must be run as root
+if [ "$(id -u)" -ne 0 ]; then
   echo "Please run as root or with sudo"
   exit 1
 fi
 
-# Enable IP forwarding
-echo "Enabling IP forwarding..."
-sysctl_conf="/etc/sysctl.conf"
-if grep -q "^net.ipv4.ip_forward=1" $sysctl_conf; then
-  echo "IP forwarding already enabled in $sysctl_conf"
-else
-  sed -i '/^#net.ipv4.ip_forward=1/s/^#//' $sysctl_conf || echo "net.ipv4.ip_forward=1" >> $sysctl_conf
-  echo "net.ipv4.ip_forward=1 added/enabled in $sysctl_conf"
-fi
-
-# Apply IP forwarding immediately
+# Enable IP forwarding immediately and persistently
 sysctl -w net.ipv4.ip_forward=1
 
-# Backup before.rules if not already backed up
-before_rules="/etc/ufw/before.rules"
-backup_file="/etc/ufw/before.rules.bak"
+# Ensure net.ipv4.ip_forward=1 is set in /etc/sysctl.conf (append if missing)
+grep -q "^net.ipv4.ip_forward=1" /etc/sysctl.conf || echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
 
-if [ ! -f "$backup_file" ]; then
-  echo "Backing up $before_rules to $backup_file"
-  cp $before_rules $backup_file
+# Backup ufw before.rules if not done yet
+BEFORE_RULES="/etc/ufw/before.rules"
+BACKUP="/etc/ufw/before.rules.bak"
+
+if [ ! -f "$BACKUP" ]; then
+  cp "$BEFORE_RULES" "$BACKUP"
 fi
 
-# Check if port forwarding rule already exists
-if grep -q -- "-A PREROUTING -p tcp --dport 8080 -j REDIRECT --to-port 80" $before_rules; then
-  echo "Port forwarding rule already present in $before_rules"
-else
-  echo "Adding port forwarding rule to $before_rules"
-
-  # Insert NAT table and rule near the top before *filter or at start of file
-
-  # We'll insert after any existing "*nat" block or create one if missing
-
-  # If *nat already exists, just append rule before COMMIT
-  if grep -q "^*nat" $before_rules; then
-    # Append the rule before COMMIT line in *nat section
-    # Find line number of COMMIT in *nat section
-    nat_commit_line=$(grep -n "^COMMIT" $before_rules | head -1 | cut -d: -f1)
-
-    # Insert rule one line above COMMIT
-    sed -i "$((nat_commit_line-1))i -A PREROUTING -p tcp --dport 8080 -j REDIRECT --to-port 80" $before_rules
-  else
-    # Insert *nat block with the rule at the top (after comments)
-    sed -i '1i\
+# Check if NAT rules already exist
+if ! grep -q "PREROUTING -p tcp --dport 8080" "$BEFORE_RULES"; then
+  # Insert NAT table and rule at top of file
+  sed -i '1i\
 # NAT table rules\n\
 *nat\n\
 :PREROUTING ACCEPT [0:0]\n\
 -A PREROUTING -p tcp --dport 8080 -j REDIRECT --to-port 80\n\
-COMMIT\n' $before_rules
-  fi
+COMMIT\n' "$BEFORE_RULES"
 fi
 
 # Reload UFW to apply changes
-echo "Reloading UFW..."
 ufw reload
 
-echo "Port forwarding from 8080 to 80 is configured."
+echo "Port forwarding from 8080 to 80 configured."

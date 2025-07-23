@@ -1,3 +1,4 @@
+# This puppet file make changes to our configuration file
 file { '/home/ubuntu/.ssh/config':
   ensure  => present,
   owner   => 'ubuntu',

@@ -1,4 +1,5 @@
 #!/bin/bash
+# Script to configure port forwarding from 8080 to 80 on web-01
 
 # Must be run as root
 if [ "$(id -u)" -ne 0 ]; then
